@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Memória BTS</title>
+    <style>
+        /* Estilos CSS */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #7b29a3; /* Cor inspirada no BTS/ARMY */
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 100px); /* 4 colunas */
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .card {
+            width: 100px;
+            height: 100px;
+            perspective: 1000px;
+            cursor: pointer;
+        }
+
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            position: relative;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 8px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .card-front {
+            background-color: #eee;
+            transform: rotateY(180deg);
+            background-size: cover;
+            background-position: center;
+        }
+
+        .card-back {
+            background-color: #6a0dad; /* Roxo BTS */
+            color: white;
+            font-size: 24px;
+            /* Você pode usar um ícone ou imagem de logo aqui se quiser */
+        }
+
+        .card-front img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .card.matched .card-front {
+            /* Deixa a carta um pouco transparente quando for um par */
+            opacity: 0.5; 
+        }
+
+        #message {
+            margin-top: 15px;
+            font-size: 1.2em;
+            color: #7b29a3;
+            font-weight: bold;
+        }
+
+        #restart-button {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            background-color: #a365df;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        #footer {
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>💜 Jogo da Memória BTS 💜</h1>
+    <p>Encontre os 8 pares!</p>
+
+    <div id="game-board">
+        </div>
+
+    <div id="message"></div>
+    
+    <button id="restart-button" onclick="initGame()">Reiniciar Jogo</button>
+
+    <div id="footer">
+        Feito por: <a href="https://t.me/btsdailybrazil" target="_blank">@BTSDAILYBRAZIL</a>
+    </div>
+
+    <script>
+        // Lógica JavaScript
+        const imageFiles = [
+	'https://phinf.wevpstatic.net/MjAyNTA3MjBfMTQy/MDAxNzUyOTQxNTQ1NzYz.ha2Y2-68JC_jV25dG_AXOMLQaOAepnrBoD88UZOShf4g.G3W_61lIl2OmixCNW7o0dEpeqHHeX-D5F0zHh0Ou3Acg.JPEG/5b966778-261b-4f17-9666-446f8c98e57b.jpeg?type=w1414',
+            'https://phinf.wevpstatic.net/MjAyNTA3MjBfMTg5/MDAxNzUyOTQxNTQzNTgy.1DNiGkLPJuzs16RfFY1xY_oeLrwmB7NL75b6EOVh4hAg.YpbwQgxATishfbCkrdLtH40oS_gAL1-YYoe5OOuHa24g.JPEG/129a2be6-90bd-457c-ae4b-ffd3e8883b08.jpeg?type=w1414',
+            'https://phinf.wevpstatic.net/MjAyNTA3MjBfMTA1/MDAxNzUyOTQxNTQzNjA5.ze3FggPQ3N4U_81Z5oKt2Y54IcImTruJkdTc7DCs2NIg.sWdlTUpI4EZ-gTkIkgkdnPzy6qGwAmuFms4R0DW440Yg.JPEG/1bcfa05e-3490-4757-9c5d-1d24f36bfc68.jpeg?type=w1414',
+            'https://phinf.wevpstatic.net/MjAyNTA3MjBfMTIg/MDAxNzUyOTQxNTQzNTQ0.mZ6D5NDGEmlaGnbTwH7SF2j3ajz3juX0Btl1FVW4VsUg.BVdxVO2MZ21Cb08fBrTCkcc-lK3m6cT2Zz8y36vYzBIg.JPEG/b9aca0ef-459a-4d7d-82ab-8ece63132047.jpeg?type=w1414',
+            'https://phinf.wevpstatic.net/MjAyNTA3MjBfNjAg/MDAxNzUyOTQxNTQ0MDgy.Sv7Re3Muxu05ijZAHtYnr2OZAblzCtcJDbsa6mn7VfQg.E2AcJwEgworgFQj4lrknA__kTx1e59o4Ds_J11fc_fcg.JPEG/0202b354-925f-465c-879a-8cfd7414c4e9.jpeg?type=w1414',
+            'https://phinf.wevpstatic.net/MjAyNTA3MjBfMTE0/MDAxNzUyOTQxNTQ0MDE3.3SNF-m7Bp7CVQx8sGv7rpAgl-ipP7A2lsFiX9RnQSm0g.1htSjTUvDwSPzEQrXHX7Bk4wCVP1kykyXbkUlr78NuUg.JPEG/f4d5f836-530d-4feb-8f57-5831e93f4977.jpeg?type=w1414',
+            'https://phinf.wevpstatic.net/MjAyNTA3MjBfMTQ0/MDAxNzUyOTQxNTQzODQx.LqwAQM_RbeBBzidv9zn8OJhcK1z10wgSrr3B-6aArUog.a3eJ0j6A2pxy7rYLeA2lLR9bWDM7WQtEyLi5HThCRt0g.JPEG/1e43f6a1-ff31-44e8-9cd2-ad5e69d3661a.jpeg?type=w1414',
+            'https://phinf.wevpstatic.net/MjAyNTA3MjBfODUg/MDAxNzUyOTQxNTQ1MjQ3.5_LoaK08dM76An3DsklbbP4OepZ_hzEoOLmgZld2Us8g.nAH7p0aL_hDm5DTbFVxalMyhdDurFtq0SK9KmxqJhQkg.JPEG/a4ac6cc9-b978-492a-9633-6fb68ef17e1b.jpeg?type=w1414'
+        ];
+
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let isChecking = false;
+
+        const board = document.getElementById('game-board');
+        const message = document.getElementById('message');
+
+        // Função para embaralhar um array (Algoritmo Fisher-Yates)
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function createBoard() {
+            // Cria os pares e embaralha
+            cards = [...imageFiles, ...imageFiles];
+            cards = shuffle(cards);
+
+            board.innerHTML = ''; // Limpa o tabuleiro
+
+            cards.forEach((imagePath, index) => {
+                const cardElement = document.createElement('div');
+                cardElement.classList.add('card');
+                cardElement.dataset.image = imagePath;
+                cardElement.dataset.index = index;
+                cardElement.addEventListener('click', () => flipCard(cardElement));
+
+                const cardInner = document.createElement('div');
+                cardInner.classList.add('card-inner');
+
+                const cardFront = document.createElement('div');
+                cardFront.classList.add('card-front');
+                cardFront.innerHTML = `<img src="${imagePath}" alt="Membro do BTS">`;
+
+                const cardBack = document.createElement('div');
+                cardBack.classList.add('card-back');
+                cardBack.textContent = '?'; // Pode ser o logo do BTS
+
+                cardInner.appendChild(cardFront);
+                cardInner.appendChild(cardBack);
+                cardElement.appendChild(cardInner);
+                board.appendChild(cardElement);
+            });
+        }
+
+        function flipCard(card) {
+            if (isChecking || card.classList.contains('flipped') || card.classList.contains('matched')) {
+                return;
+            }
+
+            card.classList.add('flipped');
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                isChecking = true;
+                checkForMatch();
+            }
+        }
+
+        function checkForMatch() {
+            const [card1, card2] = flippedCards;
+            const isMatch = card1.dataset.image === card2.dataset.image;
+
+            if (isMatch) {
+                // Par encontrado!
+                card1.classList.add('matched');
+                card2.classList.add('matched');
+                matchedPairs++;
+                flippedCards = [];
+                isChecking = false;
+                message.textContent = '👏 Par encontrado!';
+
+                if (matchedPairs === imageFiles.length) {
+                    message.textContent = '🎉 Parabéns! Você encontrou todos os pares!';
+                }
+            } else {
+                // Não é um par, vira as cartas de volta após um tempo
+                message.textContent = '😔 Tente novamente...';
+                setTimeout(() => {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    flippedCards = [];
+                    isChecking = false;
+                    message.textContent = '';
+                }, 1000);
+            }
+        }
+
+        function initGame() {
+            flippedCards = [];
+            matchedPairs = 0;
+            isChecking = false;
+            message.textContent = '';
+            createBoard();
+        }
+
+        // Inicia o jogo quando a página carrega
+        window.onload = initGame;
+        
+    </script>
+</body>
+</html>
